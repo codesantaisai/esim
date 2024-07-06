@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { FlatList, Text, View, ActivityIndicator, Image, StyleSheet, Dimensions } from 'react-native';
-import ApiService from '../Services/ApiService';
+import axios from 'axios';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
 const imageSize = width / numColumns - 20; // 20 is for padding
 
-const ProductListScreen = ({ navigation }: any) => {
-  const [products, setProducts] = useState<any[]>([]);
+const API_URL = 'https://test2.dipuravana.com/wp-json/wc/v3';
+const CONSUMER_KEY = 'ck_cb72230520df05cba55821827cc733ae9b9f0f14';
+const CONSUMER_SECRET = 'cs_f885f18f4b565742ff16ed71a01dd705bfca8c7d';
+
+const api = axios.create({
+  baseURL: `${API_URL}/products`,
+  auth: {
+    username: CONSUMER_KEY,
+    password: CONSUMER_SECRET,
+  },
+});
+
+interface Product {
+  id: number;
+  name: string;
+  images: { src: string }[];
+}
+
+const ProductListScreen: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,11 +34,10 @@ const ProductListScreen = ({ navigation }: any) => {
   }, []);
 
   const fetchProducts = async () => {
-    const apiService = new ApiService();
     try {
       setLoading(true);
-      const response = await apiService.getImage();
-      setProducts(response.data.slice(0, 10)); // Limit to 10 items
+      const response = await api.get('', { params: { per_page: 10 } });
+      setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
       setError('An error occurred while fetching products.');
@@ -53,12 +70,12 @@ const ProductListScreen = ({ navigation }: any) => {
       renderItem={({ item }) => (
         <View style={styles.itemContainer}>
           <Image
-            source={{ uri: item.download_url }}
+            source={{ uri: item.images[0]?.src }}
             style={styles.image}
             resizeMode="cover"
             onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
-          <Text style={styles.title}>{item.author}</Text>
+          <Text style={styles.title}>{item.name}</Text>
         </View>
       )}
     />
