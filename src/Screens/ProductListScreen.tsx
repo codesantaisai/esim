@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FlatList, Text, View, ActivityIndicator, Image, StyleSheet, Dimensions } from 'react-native';
+import { FlatList, Text, View, ActivityIndicator, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
 import axios from 'axios';
 
 const { width } = Dimensions.get('window');
@@ -22,12 +23,20 @@ interface Product {
   id: number;
   name: string;
   images: { src: string }[];
+  price: number;
+  // Add other properties as needed
 }
+
+type RootStackParamList = {
+  ProductDetail: { product: Product };
+  // other routes can be added here
+};
 
 const ProductListScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     fetchProducts();
@@ -36,7 +45,7 @@ const ProductListScreen: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('', { params: { per_page: 10 } });
+      const response = await api.get<Product[]>('', { params: { per_page: 10 } });
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -44,6 +53,10 @@ const ProductListScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProductPress = (product: Product) => {
+    navigation.navigate('ProductDetail', { product });
   };
 
   if (loading) {
@@ -68,7 +81,7 @@ const ProductListScreen: React.FC = () => {
       keyExtractor={(item) => item.id.toString()}
       numColumns={numColumns}
       renderItem={({ item }) => (
-        <View style={styles.itemContainer}>
+        <TouchableOpacity onPress={() => handleProductPress(item)} style={styles.itemContainer}>
           <Image
             source={{ uri: item.images[0]?.src }}
             style={styles.image}
@@ -76,7 +89,8 @@ const ProductListScreen: React.FC = () => {
             onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
           <Text style={styles.title}>{item.name}</Text>
-        </View>
+          <Text style={styles.title}>{parseFloat(item.price.toString()).toFixed(2)} $</Text>
+        </TouchableOpacity>
       )}
     />
   );
