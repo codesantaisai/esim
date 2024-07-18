@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -46,6 +46,7 @@ const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [qrCodeValue, setQRCodeValue] = useState('');
 
+  
   const createOrder = async () => {
     try {
       const response = await api.post('/orders', {
@@ -87,11 +88,34 @@ const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       const order = await createOrder();
       console.log('Order created:', order);
 
+      // Get Stripe client secret
+      console.log("before")
+      const clientSecretResponse = await api.post(`/stripe/create-payment-intent/${order.id}`);
+      console.log("before")
+      const { client_secret } = clientSecretResponse.data;
+console.log("clientSecretResponse",clientSecretResponse)
+      // Confirm payment with Stripe
+      const { error, paymentIntent } = await confirmPayment(client_secret, {
+        type: 'Card',
+        billingDetails: {
+          name: name,
+          email: email,
+        },
+      });
+
+      if (error) {
+        throw new Error('Payment failed: ' + error.message);
+      }
+
+      if (paymentIntent.status !== 'Succeeded') {
+        throw new Error('Payment not successful');
+      }
+
       // Update order status to processing
       await updateOrderStatus(order.id, 'processing');
       console.log('Order status updated to processing');
 
-      // Generate QR code value locally
+      // Generate QR code value
       const qrCode = `Order ID: ${order.id}, Product: ${product.name}, Price: ${product.price}`;
       console.log('QR code generated:', qrCode);
       setQRCodeValue(qrCode);
